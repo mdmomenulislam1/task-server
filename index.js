@@ -58,6 +58,11 @@ async function run() {
             res.send(result);
         });
 
+        app.get("/wishedProperty", async (req, res) => {
+            const result = await wishedCollection.find().toArray();
+            res.send(result);
+        });
+
 
         //review collection
         const reviewCollection = client.db("reviewDB").collection("review");
@@ -76,8 +81,6 @@ async function run() {
         const userCollection = client.db("userDb").collection("user");
         app.post('/user', async (req, res) => {
             const user = req.body;
-            // insert email if user doesnt exists: 
-            // you can do this many ways (1. email unique, 2. upsert 3. simple checking)
             const query = { email: user.email }
             const existingUser = await userCollection.findOne(query);
             if (existingUser) {
@@ -91,6 +94,8 @@ async function run() {
             const result = await userCollection.find().toArray();
             res.send(result);
         });
+
+        
 
         await client.db("admin").command({ ping: 1 });
         console.log("Pinged your deployment. You successfully connected to MongoDB!");
