@@ -75,6 +75,13 @@ async function run() {
             res.send(result);
         });
 
+        app.delete('/wishedProperty/:id',  async (req, res) => {
+            const id = req.params.id;
+            const query = { _id: new ObjectId(id) }
+            const result = await wishedCollection.deleteOne(query);
+            res.send(result);
+          })
+
 
 
 
@@ -110,6 +117,22 @@ async function run() {
 
         app.get("/user", async (req, res) => {
             const result = await userCollection.find().toArray();
+            res.send(result);
+        });
+
+
+
+
+        //offered collection
+        const offeredCollection = client.db("offeredDB").collection("offered");
+        app.post("/offeredProperty", async (req, res) => {
+            const order = req.body;
+            const result = await offeredCollection.insertOne(order);
+            res.send(result);
+        });
+
+        app.get("/offeredProperty", async (req, res) => {
+            const result = await offeredCollection.find().toArray();
             res.send(result);
         });
 
