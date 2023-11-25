@@ -71,7 +71,7 @@ async function run() {
             const options = {
                 projection: {  property_title: 1, agent_name: 1, property_location: 1, price_range: 1 },
             };
-            const result = await propertyCollection.findOne(query, options);
+            const result = await wishedCollection.findOne(query, options);
             res.send(result);
         });
 
