@@ -50,6 +50,8 @@ async function run() {
             res.send(result);
         });
 
+
+
         //wished collection
         const wishedCollection = client.db("wishedPropertyDB").collection("wishedProperty");
         app.post("/wishedProperty", async (req, res) => {
@@ -62,6 +64,18 @@ async function run() {
             const result = await wishedCollection.find().toArray();
             res.send(result);
         });
+
+        app.get('/wishedProperty/:id', async (req, res) => {
+            const id = req.params.id;
+            const query = { _id: new ObjectId(id) }
+            const options = {
+                projection: {  property_title: 1, agent_name: 1, property_location: 1, price_range: 1 },
+            };
+            const result = await propertyCollection.findOne(query, options);
+            res.send(result);
+        });
+
+
 
 
         //review collection
@@ -76,6 +90,10 @@ async function run() {
             const result = await reviewCollection.insertOne(order);
             res.send(result);
         });
+
+
+
+
 
         //user collection 
         const userCollection = client.db("userDb").collection("user");
@@ -94,6 +112,10 @@ async function run() {
             const result = await userCollection.find().toArray();
             res.send(result);
         });
+
+
+
+
 
         
 
