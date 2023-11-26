@@ -44,9 +44,39 @@ async function run() {
             const id = req.params.id;
             const query = { _id: new ObjectId(id) }
             const options = {
-                projection: { property_image: 1, property_title: 1, agent_name: 1, property_description: 1, property_location: 1, price_range: 1, verification_status: 1, agent_image: 1 },
+                projection: { property_image: 1, property_title: 1, agent_name: 1, agent_email: 1, property_description: 1, property_location: 1, price_range: 1, verification_status: 1, agent_image: 1 },
             };
             const result = await propertyCollection.findOne(query, options);
+            res.send(result);
+        });
+
+        app.post("/Property", async (req, res) => {
+            const order = req.body;
+            const result = await propertyCollection.insertOne(order);
+            res.send(result);
+        });
+
+        app.put("/property/:id", async (req, res) => {
+            const id = req.params.id;
+            const data = req.body;
+            const filter = {
+                _id: new ObjectId(id),
+            };
+            const options = { upsert: true };
+            const updatedData = {
+                $set: {
+                    property_title: data.property_title,
+                    property_image: data.property_image,
+                    property_location: data.property_location,
+                    agent_name: data.agent_name,
+                    agent_email: data.agent_email,
+                    agent_image: data.agent_image,
+                    price_range: data.price_range,
+                    verification_status: data.verification_status,
+                    property_description: data.property_description
+                },
+            };
+            const result = await propertyCollection.updateOne(filter, updatedData, options);
             res.send(result);
         });
 
@@ -69,18 +99,18 @@ async function run() {
             const id = req.params.id;
             const query = { _id: new ObjectId(id) }
             const options = {
-                projection: {  property_title: 1, agent_name: 1, property_location: 1, price_range: 1 },
+                projection: { property_title: 1, property_image: 1, agent_name: 1, agent_email: 1, property_location: 1, price_range: 1 },
             };
             const result = await wishedCollection.findOne(query, options);
             res.send(result);
         });
 
-        app.delete('/wishedProperty/:id',  async (req, res) => {
+        app.delete('/wishedProperty/:id', async (req, res) => {
             const id = req.params.id;
             const query = { _id: new ObjectId(id) }
             const result = await wishedCollection.deleteOne(query);
             res.send(result);
-          })
+        })
 
 
 
@@ -97,6 +127,13 @@ async function run() {
             const result = await reviewCollection.insertOne(order);
             res.send(result);
         });
+
+        app.delete('/review/:id', async (req, res) => {
+            const id = req.params.id;
+            const query = { _id: new ObjectId(id) }
+            const result = await reviewCollection.deleteOne(query);
+            res.send(result);
+        })
 
 
 
@@ -120,7 +157,22 @@ async function run() {
             res.send(result);
         });
 
-
+        app.put("/user/:id", async (req, res) => {
+            const id = req.params.id;
+            const data = req.body;
+            const filter = {
+                _id: new ObjectId(id),
+            };
+            const options = { upsert: true };
+            const updatedData = {
+                $set: {
+                    
+                    role: data.role
+                },
+            };
+            const result = await userCollection.updateOne(filter, updatedData, options);
+            res.send(result);
+        });
 
 
         //offered collection
@@ -136,11 +188,37 @@ async function run() {
             res.send(result);
         });
 
+        app.get('/offeredProperty/:id', async (req, res) => {
+            const id = req.params.id;
+            const query = { _id: new ObjectId(id) }
+            const options = {
+                projection: { propertyName: 1, propertyLocation: 1, property_image: 1, agentName: 1, buyerName: 1, buyerEmail: 1, offeredAmount: 1, orderedDate: 1, status: 1 },
+            };
+            const result = await offeredCollection.findOne(query, options);
+            res.send(result);
+        });
+
+        app.put("/offeredProperty/:id", async (req, res) => {
+            const id = req.params.id;
+            const data = req.body;
+            const filter = {
+                _id: new ObjectId(id),
+            };
+            const options = { upsert: true };
+            const updatedData = {
+                $set: {
+                    status: data.status
+                },
+            };
+            const result = await offeredCollection.updateOne(filter, updatedData, options);
+            res.send(result);
+        })
 
 
 
 
-        
+
+
 
         await client.db("admin").command({ ping: 1 });
         console.log("Pinged your deployment. You successfully connected to MongoDB!");
