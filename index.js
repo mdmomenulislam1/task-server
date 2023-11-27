@@ -1,10 +1,20 @@
 const express = require('express');
+const app = express();
 const cors = require('cors');
 const { MongoClient, ServerApiVersion, ObjectId } = require('mongodb');
 const jwt = require('jsonwebtoken');
-const cookieParser = require('cookie-parser');
+// const cookieParser = require('cookie-parser');
 require('dotenv').config()
-const app = express();
+
+// const stripe = require('stripe')(process.env.STRIPE_SECRET_KEY);
+// const formData = require('form-data');
+// const Mailgun = require('mailgun.js');
+// const mailgun = new Mailgun(formData);
+// const mg = mailgun.client({
+//   username: 'api',
+//   key: process.env.MAIL_GUN_API_KEY,
+// });
+
 const port = process.env.PORT || 5000;
 
 app.use(cors({
@@ -13,10 +23,8 @@ app.use(cors({
     ],
     credentials: true
 }));
-
-
 app.use(express.json());
-app.use(cookieParser());
+// app.use(cookieParser());
 
 const uri = `mongodb+srv://${process.env.DB_USER}:${process.env.DB_PASS}@cluster0.mwjflvc.mongodb.net/?retryWrites=true&w=majority`;
 
@@ -31,6 +39,43 @@ const client = new MongoClient(uri, {
 async function run() {
     try {
 
+        //jwt
+        app.post('/jwt', async (req, res) => {
+            const user = req.body;
+            const token = jwt.sign(user, process.env.ACCESS_TOKEN_SECRET, { expiresIn: '1h' });
+            res.send({ token });
+        });
+
+        //middle wares
+        const verifyToken = (req, res, next) => {
+            // console.log('inside verify token', req.headers.authorization);
+            if (!req.headers.authorization) {
+                return res.status(401).send({ message: 'unauthorized access' });
+            }
+            const token = req.headers.authorization.split(' ')[1];
+            jwt.verify(token, process.env.ACCESS_TOKEN_SECRET, (err, decoded) => {
+                if (err) {
+                    return res.status(401).send({ message: 'unauthorized access' })
+                }
+                req.decoded = decoded;
+                next();
+            })
+        };
+
+        //verify admin after token
+        const verifyAdmin = async (req, res, next) => {
+            const email = req.decoded.email;
+            const query = { email: email };
+            const user = await userCollection.findOne(query);
+            const isAdmin = user?.role === 'admin';
+            if (!isAdmin) {
+                return res.status(403).send({ message: 'forbidden access' });
+            }
+            next();
+        };
+
+
+
 
         //property collection
         const propertyCollection = client.db("propertyDB").collection("property");
@@ -38,7 +83,6 @@ async function run() {
             const result = await propertyCollection.find().toArray();
             res.send(result);
         });
-
 
         app.get('/property/:id', async (req, res) => {
             const id = req.params.id;
@@ -50,7 +94,7 @@ async function run() {
             res.send(result);
         });
 
-        app.post("/Property", async (req, res) => {
+        app.post("/property", async (req, res) => {
             const order = req.body;
             const result = await propertyCollection.insertOne(order);
             res.send(result);
@@ -77,6 +121,13 @@ async function run() {
                 },
             };
             const result = await propertyCollection.updateOne(filter, updatedData, options);
+            res.send(result);
+        });
+
+        app.delete('/property/:id', async (req, res) => {
+            const id = req.params.id;
+            const query = { _id: new ObjectId(id) }
+            const result = await propertyCollection.deleteOne(query);
             res.send(result);
         });
 
@@ -110,7 +161,7 @@ async function run() {
             const query = { _id: new ObjectId(id) }
             const result = await wishedCollection.deleteOne(query);
             res.send(result);
-        })
+        });
 
 
 
@@ -166,13 +217,82 @@ async function run() {
             const options = { upsert: true };
             const updatedData = {
                 $set: {
-                    
+
                     role: data.role
                 },
             };
             const result = await userCollection.updateOne(filter, updatedData, options);
             res.send(result);
         });
+
+        app.delete('/user/:id', async (req, res) => {
+            const id = req.params.id;
+            const query = { _id: new ObjectId(id) }
+            const result = await userCollection.deleteOne(query);
+            res.send(result);
+        });
+
+
+
+        // app.put("/property/:id", async (req, res) => {
+        //     const id = req.params.id;
+        //     const data = req.body;
+        //     const filter = {
+        //         _id: new ObjectId(id),
+        //     };
+        //     const options = { upsert: true };
+        //     const updatedData = {
+        //         $set: {
+        //             property_title: data.property_title,
+        //             property_image: data.property_image,
+        //             property_location: data.property_location,
+        //             agent_name: data.agent_name,
+        //             agent_email: data.agent_email,
+        //             agent_image: data.agent_image,
+        //             price_range: data.price_range,
+        //             verification_status: data.verification_status,
+        //             property_description: data.property_description
+        //         },
+        //     };
+        //     const result = await propertyCollection.updateOne(filter, updatedData, options);
+        //     res.send(result);
+        // });
+
+
+
+        //admin verify
+        app.get('/user/admin/:email', verifyToken, async (req, res) => {
+            const email = req.params.email;
+
+            if (email !== req.decoded.email) {
+                return res.status(403).send({ message: 'forbidden access' })
+            }
+
+            const query = { email: email };
+            const user = await userCollection.findOne(query);
+            let admin = false;
+            if (user) {
+                admin = user?.role === 'Admin';
+            }
+            res.send({ admin });
+        });
+
+        //agent verify
+        app.get('/user/agent/:email', verifyToken, async (req, res) => {
+            const email = req.params.email;
+
+            if (email !== req.decoded.email) {
+                return res.status(403).send({ message: 'forbidden access' })
+            }
+
+            const query = { email: email };
+            const user = await userCollection.findOne(query);
+            let agent = false;
+            if (user) {
+                agent = user?.role === 'Agent';
+            }
+            res.send({ agent });
+        })
 
 
         //offered collection
