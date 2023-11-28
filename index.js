@@ -3,17 +3,15 @@ const app = express();
 const cors = require('cors');
 const { MongoClient, ServerApiVersion, ObjectId } = require('mongodb');
 const jwt = require('jsonwebtoken');
-// const cookieParser = require('cookie-parser');
-require('dotenv').config()
-
-// const stripe = require('stripe')(process.env.STRIPE_SECRET_KEY);
-// const formData = require('form-data');
-// const Mailgun = require('mailgun.js');
-// const mailgun = new Mailgun(formData);
-// const mg = mailgun.client({
-//   username: 'api',
-//   key: process.env.MAIL_GUN_API_KEY,
-// });
+require('dotenv').config();
+const stripe = require('stripe')(process.env.STRIPE_SECRET_KEY);
+const formData = require('form-data');
+const Mailgun = require('mailgun.js');
+const mailgun = new Mailgun(formData);
+const mg = mailgun.client({
+  username: 'api',
+  key: process.env.MAIL_GUN_API_KEY,
+});
 
 const port = process.env.PORT || 5000;
 
@@ -100,14 +98,11 @@ async function run() {
             res.send(result);
         });
 
-        app.put("/property/:id", async (req, res) => {
-            const id = req.params.id;
+        app.patch('/property/:id', async (req, res) => {
             const data = req.body;
-            const filter = {
-                _id: new ObjectId(id),
-            };
-            const options = { upsert: true };
-            const updatedData = {
+            const id = req.params.id;
+            const filter = { _id: new ObjectId(id) }
+            const updatedDoc = {
                 $set: {
                     property_title: data.property_title,
                     property_image: data.property_image,
@@ -118,11 +113,13 @@ async function run() {
                     price_range: data.price_range,
                     verification_status: data.verification_status,
                     property_description: data.property_description
-                },
-            };
-            const result = await propertyCollection.updateOne(filter, updatedData, options);
+                }
+            }
+
+            const result = await propertyCollection.updateOne(filter, updatedDoc)
             res.send(result);
         });
+
 
         app.delete('/property/:id', async (req, res) => {
             const id = req.params.id;
@@ -163,9 +160,6 @@ async function run() {
             res.send(result);
         });
 
-
-
-
         //review collection
         const reviewCollection = client.db("reviewDB").collection("review");
         app.get("/review", async (req, res) => {
@@ -184,11 +178,7 @@ async function run() {
             const query = { _id: new ObjectId(id) }
             const result = await reviewCollection.deleteOne(query);
             res.send(result);
-        })
-
-
-
-
+        });
 
         //user collection 
         const userCollection = client.db("userDb").collection("user");
@@ -208,23 +198,6 @@ async function run() {
             res.send(result);
         });
 
-        app.put("/user/:id", async (req, res) => {
-            const id = req.params.id;
-            const data = req.body;
-            const filter = {
-                _id: new ObjectId(id),
-            };
-            const options = { upsert: true };
-            const updatedData = {
-                $set: {
-
-                    role: data.role
-                },
-            };
-            const result = await userCollection.updateOne(filter, updatedData, options);
-            res.send(result);
-        });
-
         app.delete('/user/:id', async (req, res) => {
             const id = req.params.id;
             const query = { _id: new ObjectId(id) }
@@ -232,32 +205,22 @@ async function run() {
             res.send(result);
         });
 
+        app.patch('/user/:id', async (req, res) => {
+            const data = req.body;
+            const id = req.params.id;
+            const filter = { _id: new ObjectId(id) }
+            const updatedDoc = {
+                $set: {
+                    name: data.name,
+                    email: data.email,
+                    profile: data.profile,
+                    role: data.role
+                }
+            }
 
-
-        // app.put("/property/:id", async (req, res) => {
-        //     const id = req.params.id;
-        //     const data = req.body;
-        //     const filter = {
-        //         _id: new ObjectId(id),
-        //     };
-        //     const options = { upsert: true };
-        //     const updatedData = {
-        //         $set: {
-        //             property_title: data.property_title,
-        //             property_image: data.property_image,
-        //             property_location: data.property_location,
-        //             agent_name: data.agent_name,
-        //             agent_email: data.agent_email,
-        //             agent_image: data.agent_image,
-        //             price_range: data.price_range,
-        //             verification_status: data.verification_status,
-        //             property_description: data.property_description
-        //         },
-        //     };
-        //     const result = await propertyCollection.updateOne(filter, updatedData, options);
-        //     res.send(result);
-        // });
-
+            const result = await userCollection.updateOne(filter, updatedDoc)
+            res.send(result);
+        });
 
 
         //admin verify
@@ -318,25 +281,138 @@ async function run() {
             res.send(result);
         });
 
-        app.put("/offeredProperty/:id", async (req, res) => {
-            const id = req.params.id;
+        app.patch('/offeredProperty/:id', async (req, res) => {
             const data = req.body;
-            const filter = {
-                _id: new ObjectId(id),
-            };
-            const options = { upsert: true };
-            const updatedData = {
+            const id = req.params.id;
+            const filter = { _id: new ObjectId(id) }
+            const updatedDoc = {
                 $set: {
+                    propertyName: data.propertyName,
+                    propertyLocation: data.propertyLocation,
+                    property_image: data.property_image,
+                    agentName: data.agentName,
+                    agentEmail: data.agentEmail,
+                    buyerName: data.buyerName,
+                    buyerEmail: data.buyerEmail,
+                    offeredAmount: data.offeredAmount,
+                    orderedDate: data.orderedDate,
                     status: data.status
-                },
-            };
-            const result = await offeredCollection.updateOne(filter, updatedData, options);
+                }
+            }
+
+            const result = await offeredCollection.updateOne(filter, updatedDoc)
             res.send(result);
+        });
+
+
+        //advertise collection
+        const advertiseCollection = client.db("advertiseDB").collection("advertise");
+        app.post("/advertiseProperty", async (req, res) => {
+            const order = req.body;
+            const result = await advertiseCollection.insertOne(order);
+            res.send(result);
+        });
+
+        app.get("/advertiseProperty", async (req, res) => {
+            const result = await advertiseCollection.find().toArray();
+            res.send(result);
+        });
+
+        app.patch('/advertiseProperty/:id', async (req, res) => {
+            const id = req.params.id;
+            const filter = { _id: new ObjectId(id) };
+            const updatedDoc = {
+                $set: {
+                    advertise_status: 'Advertised'
+                }
+            }
+            const result = await advertiseCollection.updateOne(filter, updatedDoc);
+            res.send(result);
+        });
+
+        app.delete('/advertiseProperty/:id', async (req, res) => {
+            const id = req.params.id;
+            const query = { _id: new ObjectId(id) }
+            const result = await advertiseCollection.deleteOne(query);
+            res.send(result);
+        });
+
+
+        // payment intent
+        // app.post('/create-payment-intent', async (req, res) => {
+        //     const { price } = req.body;
+        //     const amount = parseInt(price * 100);
+        //     console.log(amount, 'amount inside the intent')
+
+        //     const paymentIntent = await stripe.paymentIntents.create({
+        //         amount: amount,
+        //         currency: 'usd',
+        //         payment_method_types: ['card']
+        //     });
+
+        //     res.send({
+        //         clientSecret: paymentIntent.client_secret
+        //     })
+        // });
+
+
+        const paymentCollection = client.db("paymentDB").collection("payment");
+      
+        app.post("/payments", async (req, res) => {
+            const order = req.body;
+            const result = await paymentCollection.insertOne(order);
+            res.send(result);
+        });
+
+        app.get('/payments', async (req, res) => {
+            const query = { email: req.params.email }
+            // if (req.params.email !== req.decoded.email) {
+            //     return res.status(403).send({ message: 'forbidden access' });
+            // }
+            const result = await paymentCollection.find(query).toArray();
+            res.send(result);
+        });
+
+        app.get("/payments", async (req, res) => {
+            const result = await paymentCollection.find().toArray();
+            res.send(result);
+        });
+
+        app.post('/payments', async (req, res) => {
+            const payment = req.body;
+            const paymentResult = await paymentCollection.insertOne(payment);
+
+            //  carefully delete each item from the cart
+            console.log('payment info', payment);
+            const query = {
+                _id: {
+                    $in: payment.cartIds.map(id => new ObjectId(id))
+                }
+            };
+
+            const deleteResult = await cartCollection.deleteMany(query);
+
+            // mg.messages
+            //     .create(process.env.MAIL_SENDING_DOMAIN, {
+            //         from: "Mailgun Sandbox <postmaster@sandboxbdfffae822db40f6b0ccc96ae1cb28f3.mailgun.org>",
+            //         to: ["jhankarmahbub7@gmail.com"],
+            //         subject: "Bistro Boss Order Confirmation",
+            //         text: "Testing some Mailgun awesomness!",
+            //         html: `
+            //     <div>
+            //       <h2>Thank you for your order</h2>
+            //       <h4>Your Transaction Id: <strong>${payment.transactionId}</strong></h4>
+            //       <p>We would like to get your feedback about the food</p>
+            //     </div>
+            //   `
+            //     })
+            //     .then(msg => console.log(msg)) // logs response data
+            //     .catch(err => console.log(err)); // logs any error`;
+
+            res.send({ paymentResult, deleteResult });
+
+
         })
-
-
-
-
 
 
 
