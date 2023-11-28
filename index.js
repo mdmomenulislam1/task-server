@@ -9,15 +9,16 @@ const formData = require('form-data');
 const Mailgun = require('mailgun.js');
 const mailgun = new Mailgun(formData);
 const mg = mailgun.client({
-  username: 'api',
-  key: process.env.MAIL_GUN_API_KEY,
+    username: 'api',
+    key: process.env.MAIL_GUN_API_KEY,
 });
 
 const port = process.env.PORT || 5000;
 
 app.use(cors({
     origin: [
-        'http://localhost:5173'
+        'http://localhost:5173',
+        'https://zippy-praline-a2f0eb.netlify.app'
     ],
     credentials: true
 }));
@@ -255,7 +256,25 @@ async function run() {
                 agent = user?.role === 'Agent';
             }
             res.send({ agent });
-        })
+        });
+
+
+        //user verify
+        app.get('/user/general/:email', verifyToken, async (req, res) => {
+            const email = req.params.email;
+
+            if (email !== req.decoded.email) {
+                return res.status(403).send({ message: 'forbidden access' })
+            }
+
+            const query = { email: email };
+            const user = await userCollection.findOne(query);
+            let general = false;
+            if (user) {
+                general = user?.role !== 'Agent' || user?.role !== 'Admin';
+            }
+            res.send({ agent });
+        });
 
 
         //offered collection
@@ -337,6 +356,16 @@ async function run() {
             res.send(result);
         });
 
+        app.get('/advertiseProperty/:id', async (req, res) => {
+            const id = req.params.id;
+            const query = { _id: new ObjectId(id) }
+            const options = {
+                projection: { property_image: 1, property_title: 1, agent_name: 1, agent_email: 1, property_description: 1, property_location: 1, price_range: 1, verification_status: 1, agent_image: 1 },
+            };
+            const result = await advertiseCollection.findOne(query, options);
+            res.send(result);
+        });
+
 
         // payment intent
         // app.post('/create-payment-intent', async (req, res) => {
@@ -357,7 +386,7 @@ async function run() {
 
 
         const paymentCollection = client.db("paymentDB").collection("payment");
-      
+
         app.post("/payments", async (req, res) => {
             const order = req.body;
             const result = await paymentCollection.insertOne(order);
