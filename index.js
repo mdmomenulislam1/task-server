@@ -11,7 +11,9 @@ const port = process.env.PORT || 5000;
 app.use(cors({
     origin: [
         'http://localhost:5173',
-        'https://zippy-praline-a2f0eb.netlify.app'
+        'https://zippy-praline-a2f0eb.netlify.app',
+        'assignment-12-dbff2.firebaseapp.com',
+        'assignment-12-dbff2.web.app'
     ],
     credentials: true
 }));
@@ -87,7 +89,7 @@ async function run() {
             res.send(result);
         });
 
-        app.put('/property/:id', async (req, res) => {
+        app.patch('/property/:id', async (req, res) => {
             const data = req.body;
             const id = req.params.id;
             const filter = { _id: new ObjectId(id) }
@@ -109,6 +111,27 @@ async function run() {
             res.send(result);
         });
 
+        app.put('/property/:id', async (req, res) => {
+            const data = req.body;
+            const id = req.params.id;
+            const filter = { _id: new ObjectId(id) }
+            const updatedDoc = {
+                $set: {
+                    property_title: data.property_title,
+                    property_image: data.property_image,
+                    property_location: data.property_location,
+                    agent_name: data.agent_name,
+                    agent_email: data.agent_email,
+                    agent_image: data.agent_image,
+                    price_range: data.price_range,
+                    verification_status: data.verification_status,
+                    property_description: data.property_description
+                }
+            }
+
+            const result = await propertyCollection.updateOne(filter, updatedDoc)
+            res.send(result);
+        });
 
         app.delete('/property/:id', async (req, res) => {
             const id = req.params.id;
@@ -200,14 +223,39 @@ async function run() {
             const filter = { _id: new ObjectId(id) }
             const updatedDoc = {
                 $set: {
-                    name: data.name,
-                    email: data.email,
+                    name: data.name, 
+                    email: data.email, 
                     profile: data.profile,
-                    role: data.role
+                    role: data.role, 
+                    profession: data.profession, 
+                    bod: data.bod, 
+                    bio: data.bio, 
+                    presentAddress: data.presentAddress, 
+                    permanentAddress: data.permanentAddress
                 }
             }
 
             const result = await userCollection.updateOne(filter, updatedDoc)
+            res.send(result);
+        });
+
+        app.get('/user/:id', async (req, res) => {
+            const id = req.params.id;
+            const query = { _id: new ObjectId(id) }
+            const options = {
+                projection: {
+                    name: 1,
+                    email: 1,
+                    profile: 1,
+                    role: 1,
+                    profession: 1, 
+                    bod: 1,
+                    bio: 1,
+                    presentAddress: 1,
+                    permanentAddress: 1,
+                },
+            };
+            const result = await userCollection.findOne(query, options);
             res.send(result);
         });
 
