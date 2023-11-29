@@ -67,10 +67,31 @@ async function run() {
         };
 
         //property collection
+        
         const propertyCollection = client.db("propertyDB").collection("property");
+
         app.get('/property', async (req, res) => {
-            const result = await propertyCollection.find().toArray();
-            res.send(result);
+            const filter = req.query;
+            const query = {};
+
+            
+            if (filter.search) {
+                query.property_title = { $regex: filter.search, $options: 'i' };
+            }
+
+            const options = {
+                sort: {
+                    price_range: filter.sort === 'asc' ? 1 : -1
+                }
+            };
+
+            try {
+                const result = await propertyCollection.find(query).sort(options.sort).toArray();
+                res.send(result);
+            } catch (error) {
+                console.error(error);
+                res.status(500).send('Internal Server Error');
+            }
         });
 
         app.get('/property/:id', async (req, res) => {
@@ -223,14 +244,14 @@ async function run() {
             const filter = { _id: new ObjectId(id) }
             const updatedDoc = {
                 $set: {
-                    name: data.name, 
-                    email: data.email, 
+                    name: data.name,
+                    email: data.email,
                     profile: data.profile,
-                    role: data.role, 
-                    profession: data.profession, 
-                    bod: data.bod, 
-                    bio: data.bio, 
-                    presentAddress: data.presentAddress, 
+                    role: data.role,
+                    profession: data.profession,
+                    bod: data.bod,
+                    bio: data.bio,
+                    presentAddress: data.presentAddress,
                     permanentAddress: data.permanentAddress
                 }
             }
@@ -248,7 +269,7 @@ async function run() {
                     email: 1,
                     profile: 1,
                     role: 1,
-                    profession: 1, 
+                    profession: 1,
                     bod: 1,
                     bio: 1,
                     presentAddress: 1,
