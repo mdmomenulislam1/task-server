@@ -5,13 +5,6 @@ const { MongoClient, ServerApiVersion, ObjectId } = require('mongodb');
 const jwt = require('jsonwebtoken');
 require('dotenv').config();
 const stripe = require('stripe')(process.env.STRIPE_SECRET_KEY);
-const formData = require('form-data');
-const Mailgun = require('mailgun.js');
-const mailgun = new Mailgun(formData);
-const mg = mailgun.client({
-    username: 'api',
-    key: process.env.MAIL_GUN_API_KEY,
-});
 
 const port = process.env.PORT || 5000;
 
@@ -23,7 +16,6 @@ app.use(cors({
     credentials: true
 }));
 app.use(express.json());
-// app.use(cookieParser());
 
 const uri = `mongodb+srv://${process.env.DB_USER}:${process.env.DB_PASS}@cluster0.mwjflvc.mongodb.net/?retryWrites=true&w=majority`;
 
@@ -47,7 +39,6 @@ async function run() {
 
         //middle wares
         const verifyToken = (req, res, next) => {
-            // console.log('inside verify token', req.headers.authorization);
             if (!req.headers.authorization) {
                 return res.status(401).send({ message: 'unauthorized access' });
             }
@@ -73,9 +64,6 @@ async function run() {
             next();
         };
 
-
-
-
         //property collection
         const propertyCollection = client.db("propertyDB").collection("property");
         app.get('/property', async (req, res) => {
@@ -99,7 +87,7 @@ async function run() {
             res.send(result);
         });
 
-        app.patch('/property/:id', async (req, res) => {
+        app.put('/property/:id', async (req, res) => {
             const data = req.body;
             const id = req.params.id;
             const filter = { _id: new ObjectId(id) }
@@ -273,7 +261,7 @@ async function run() {
             if (user) {
                 general = user?.role !== 'Agent' || user?.role !== 'Admin';
             }
-            res.send({ agent });
+            res.send({ general });
         });
 
 
@@ -294,7 +282,7 @@ async function run() {
             const id = req.params.id;
             const query = { _id: new ObjectId(id) }
             const options = {
-                projection: { propertyName: 1, propertyLocation: 1, property_image: 1, agentName: 1, buyerName: 1, buyerEmail: 1, offeredAmount: 1, orderedDate: 1, status: 1 },
+                projection: { propertyName: 1, propertyLocation: 1, property_image: 1, agentEmail: 1, agentName: 1, buyerName: 1, buyerEmail: 1, offeredAmount: 1, orderedDate: 1, status: 1 },
             };
             const result = await offeredCollection.findOne(query, options);
             res.send(result);
@@ -322,6 +310,32 @@ async function run() {
             const result = await offeredCollection.updateOne(filter, updatedDoc)
             res.send(result);
         });
+
+        app.put('/offeredProperty/:id', async (req, res) => {
+            const data = req.body;
+            const id = req.params.id;
+            const filter = { _id: new ObjectId(id) }
+            const updatedDoc = {
+                $set: {
+                    propertyName: data.propertyName,
+                    propertyLocation: data.propertyLocation,
+                    property_image: data.property_image,
+                    agentName: data.agentName,
+                    agentEmail: data.agentEmail,
+                    buyerEmail: data.buyerEmail,
+                    buyerName: data.buyerName,
+                    offeredAmount: data.offeredAmount,
+                    status: data.status,
+                    orderedDate: data.orderedDate,
+                    transactionId: data.transactionId,
+                    paymentDate: data.paymentDate,
+                }
+            }
+
+            const result = await offeredCollection.updateOne(filter, updatedDoc)
+            res.send(result);
+        });
+
 
 
         //advertise collection
@@ -367,81 +381,41 @@ async function run() {
         });
 
 
-        // payment intent
-        // app.post('/create-payment-intent', async (req, res) => {
-        //     const { price } = req.body;
-        //     const amount = parseInt(price * 100);
-        //     console.log(amount, 'amount inside the intent')
+        //payment intent
+        app.post('/create-payment-intent', async (req, res) => {
+            const { price } = req.body;
+            const amount = parseInt(price * 100);
+            console.log(amount, 'amount inside the intent')
 
-        //     const paymentIntent = await stripe.paymentIntents.create({
-        //         amount: amount,
-        //         currency: 'usd',
-        //         payment_method_types: ['card']
-        //     });
+            const paymentIntent = await stripe.paymentIntents.create({
+                amount: amount,
+                currency: 'usd',
+                payment_method_types: ['card']
+            });
+            res.send({
+                clientSecret: paymentIntent.client_secret
+            })
+        });
 
-        //     res.send({
-        //         clientSecret: paymentIntent.client_secret
-        //     })
-        // });
+        //report collection
+        const reportCollection = client.db("reportDB").collection("report");
+        app.get("/report", async (req, res) => {
+            const result = await reportCollection.find().toArray();
+            res.send(result);
+        });
 
-
-        const paymentCollection = client.db("paymentDB").collection("payment");
-
-        app.post("/payments", async (req, res) => {
+        app.post("/report", async (req, res) => {
             const order = req.body;
-            const result = await paymentCollection.insertOne(order);
+            const result = await reportCollection.insertOne(order);
             res.send(result);
         });
 
-        app.get('/payments', async (req, res) => {
-            const query = { email: req.params.email }
-            // if (req.params.email !== req.decoded.email) {
-            //     return res.status(403).send({ message: 'forbidden access' });
-            // }
-            const result = await paymentCollection.find(query).toArray();
+        app.delete('/report/:id', async (req, res) => {
+            const id = req.params.id;
+            const query = { _id: new ObjectId(id) }
+            const result = await reportCollection.deleteOne(query);
             res.send(result);
         });
-
-        app.get("/payments", async (req, res) => {
-            const result = await paymentCollection.find().toArray();
-            res.send(result);
-        });
-
-        app.post('/payments', async (req, res) => {
-            const payment = req.body;
-            const paymentResult = await paymentCollection.insertOne(payment);
-
-            //  carefully delete each item from the cart
-            console.log('payment info', payment);
-            const query = {
-                _id: {
-                    $in: payment.cartIds.map(id => new ObjectId(id))
-                }
-            };
-
-            const deleteResult = await cartCollection.deleteMany(query);
-
-            // mg.messages
-            //     .create(process.env.MAIL_SENDING_DOMAIN, {
-            //         from: "Mailgun Sandbox <postmaster@sandboxbdfffae822db40f6b0ccc96ae1cb28f3.mailgun.org>",
-            //         to: ["jhankarmahbub7@gmail.com"],
-            //         subject: "Bistro Boss Order Confirmation",
-            //         text: "Testing some Mailgun awesomness!",
-            //         html: `
-            //     <div>
-            //       <h2>Thank you for your order</h2>
-            //       <h4>Your Transaction Id: <strong>${payment.transactionId}</strong></h4>
-            //       <p>We would like to get your feedback about the food</p>
-            //     </div>
-            //   `
-            //     })
-            //     .then(msg => console.log(msg)) // logs response data
-            //     .catch(err => console.log(err)); // logs any error`;
-
-            res.send({ paymentResult, deleteResult });
-
-
-        })
 
 
 
