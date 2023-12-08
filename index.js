@@ -11,7 +11,7 @@ const port = process.env.PORT || 5000;
 app.use(cors({
     origin: [
         'http://localhost:5173',
-        'https://zippy-praline-a2f0eb.netlify.app',
+        'https://harmony-real-estate.netlify.app',
         'assignment-12-dbff2.firebaseapp.com',
         'assignment-12-dbff2.web.app'
     ],
