@@ -67,14 +67,14 @@ async function run() {
         };
 
         //property collection
-        
+
         const propertyCollection = client.db("propertyDB").collection("property");
 
         app.get('/property', async (req, res) => {
             const filter = req.query;
             const query = {};
 
-            
+
             if (filter.search) {
                 query.property_title = { $regex: filter.search, $options: 'i' };
             }
@@ -256,9 +256,18 @@ async function run() {
                 }
             }
 
+            if (data.role === 'Fraud') {
+                await propertyCollection.deleteMany({ agent_email: data.email });
+              }
+
             const result = await userCollection.updateOne(filter, updatedDoc)
             res.send(result);
         });
+
+
+
+
+
 
         app.get('/user/:id', async (req, res) => {
             const id = req.params.id;
