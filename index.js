@@ -161,8 +161,6 @@ async function run() {
             res.send(result);
         });
 
-
-
         //wished collection
         const wishedCollection = client.db("wishedPropertyDB").collection("wishedProperty");
         app.post("/wishedProperty", async (req, res) => {
@@ -263,11 +261,6 @@ async function run() {
             const result = await userCollection.updateOne(filter, updatedDoc)
             res.send(result);
         });
-
-
-
-
-
 
         app.get('/user/:id', async (req, res) => {
             const id = req.params.id;
